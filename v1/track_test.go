@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
+	// "io"
 	"log"
 	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
+	// "os"
+	"github.com/echonest/egonest/v1/types"
 	"time"
 )
 
@@ -153,7 +154,7 @@ func Example() {
 		return
 	}
 
-	var full_analysis Analysis
+	var full_analysis types.Analysis
 	err = CustomUnmarshal(resp, &full_analysis)
 	if err != nil {
 		log.Println(analysis_url)

@@ -1,6 +1,5 @@
-package egonest
-
-// This file contains useful types for unmarshalling responses
+// The egonest/types package contains useful structs for unmarshalling Echo Nest API responses.
+package types
 
 type Genre struct {
 	Name string `json:"name"`
