@@ -169,3 +169,61 @@ func Example() {
 	// Output:
 	// complete
 }
+
+func Example_playlist() {
+	var h Host
+	args := url.Values{"artist": []string{"Weezer"}, "type": []string{"artist-radio"}}
+	resp, err := h.GetCall("playlist/static", args)
+	if err != nil {
+		return
+	}
+	decoded, err := GenericUnmarshal(resp, false)
+	if err != nil {
+		return
+	}
+	for i, song := range Dig(decoded, "response", "songs").([]interface{}) {
+		fmt.Printf("%d %-32.32s s\n", i, Dig(song, "artist_name"), Dig(song, "title"))
+	}
+}
+
+func Example_similarArtists() {
+	var h Host
+	artist_name := "The Beatles"
+	args := make(url.Values)
+	for i := 0; i < 500; i++ {
+		args.Set("name", artist_name)
+		response, err := h.GetCall("artist/similar", args)
+		if err != nil {
+			return
+		}
+		decoded, err := GenericUnmarshal(response, false)
+		if err != nil {
+			return
+		}
+
+		fmt.Println(artist_name)
+		artists := Dig(decoded, "response", "artists").([]interface{})
+		for _, artist := range artists {
+			fmt.Println("   -->", Dig(artist, "name"))
+		}
+		artist_name = Dig(artists[rand.Intn(len(artists))], "name").(string)
+	}
+}
+
+func Example_createTasteProfile() {
+	// note that this needs a POST
+	var h Host
+	args := make(url.Values)
+	args.Set("name", "test-catalog")
+	args.Set("type", "general")
+	response, err := h.PostCall("catalog/create", args, nil)
+	if err != nil {
+		return
+	}
+	decoded, err := GenericUnmarshal(response, false)
+	if err != nil {
+		return
+	}
+
+	fmt.Println(Dig(decoded, "response", "id"))
+}

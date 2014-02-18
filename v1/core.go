@@ -5,9 +5,9 @@
 /*
 egonest is a wrapper for the Echo Nest API for the Go programming language.
 It provides a basic interface for making calls to the API, using Go's built-in json decoding
-to make it simpler to deal with responses.
+to handle responses.
 
-For full API documentation and to sign up, see http://developer.echonest.com
+For full documentation on API calls and to sign up, see http://developer.echonest.com.
 
 */
 package egonest
@@ -40,6 +40,8 @@ type RateLimitInfo struct {
 	Remaining int
 	// The time the last call in this bucket was made.
 	LastCall time.Time
+	// last measured clock drift
+	Drift time.Duration
 }
 
 // A Host contains the most basic information necessary for communicating with The Echo Nest; the API hostname and key.
@@ -260,18 +262,19 @@ func (h *Host) storeRateLimit(call string, headers http.Header) {
 	if err != nil {
 		debugLogger.Println("Error parsing rate limit remaining:", err)
 	}
+	debugLogger.Println(headers.Get("Date"))
 	lc, err := http.ParseTime(headers.Get("Date"))
 	if err != nil {
 		debugLogger.Println("Error parsing date header:", err)
 	}
 	info := RateLimitInfo{Bucket: headers.Get("x-ratelimit-bucket"),
-		Used: int(u), Limit: int(l), Remaining: int(r), LastCall: lc}
-	debugLogger.Println("storing rate limit info for", call, "info")
+		Used: int(u), Limit: int(l), Remaining: int(r), LastCall: lc, Drift: time.Now().Sub(lc)}
+	debugLogger.Println("storing rate limit info for", call, "info", info)
 
 	h.rateLimitLock.Lock()
 	defer h.rateLimitLock.Unlock()
 
-	if h.rateLimits[info.Bucket].LastCall.Before(info.LastCall) {
+	if info.LastCall.After(h.rateLimits[info.Bucket].LastCall) || info.LastCall == h.rateLimits[info.Bucket].LastCall {
 		h.callToBucket[call] = info.Bucket
 		h.rateLimits[info.Bucket] = info
 	}
@@ -308,6 +311,7 @@ func (h *Host) delayIfNeeded(call string) {
 	defer h.rateLimitLock.RUnlock()
 	bucket, ok := h.callToBucket[call]
 	limit, ok := h.rateLimits[bucket]
+	debugLogger.Println(limit, ok)
 	if !ok {
 		return
 	}
@@ -317,11 +321,11 @@ func (h *Host) delayIfNeeded(call string) {
 
 	// seconds that were left until the next rate limit reset at the time
 	// of the last call
-	secondsleft := time.Duration(60-limit.LastCall.Second())*time.Second - time.Duration(limit.LastCall.Nanosecond())
-
-	if time.Now().Sub(limit.LastCall) > secondsleft {
+	secondsleft := time.Duration(60-limit.LastCall.Second()) * time.Second
+	debugLogger.Println(time.Now(), limit.LastCall, time.Now().Sub(limit.LastCall), secondsleft)
+	if time.Now().Sub(limit.LastCall) <= secondsleft {
 		// sleep until top of the minute
-		sleept := time.Duration(60-time.Now().Second())*time.Second - time.Duration(time.Now().Nanosecond())
+		sleept := time.Duration(60-time.Now().Second())*time.Second + limit.Drift
 		debugLogger.Println("rate limit used up", call, "sleeping for", sleept)
 		time.Sleep(sleept)
 	}

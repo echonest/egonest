@@ -155,8 +155,9 @@ func TestRateLimit(t *testing.T) {
 	headers.Set("X-RateLimit-Remaining", "0")
 	bucket := false
 	testPart := func() {
-		start := time.Now()
-		headers.Set("Date", start.Format(http.TimeFormat))
+		start := time.Now().Local()
+		debugLogger.Println(start.Format(time.RFC850))
+		headers.Set("Date", start.Format(time.RFC850))
 		nextMinute := start
 		timeToNextMinute := (60*time.Second - time.Duration(nextMinute.Second())*time.Second - time.Duration(nextMinute.Nanosecond())*time.Nanosecond)
 		nextMinute = nextMinute.Add(timeToNextMinute)
@@ -205,13 +206,14 @@ func TestRateLimit(t *testing.T) {
 		t.Log("no default info stored")
 		t.Fail()
 	}
-	bucketcheck := RateLimitInfo{Bucket: "", Remaining: 0, Used: 400, Limit: 400, LastCall: defaultbucket.LastCall}
+	bucketcheck := RateLimitInfo{Bucket: "", Remaining: 0, Used: 400, Limit: 400, LastCall: defaultbucket.LastCall, Drift: defaultbucket.Drift}
 	if defaultbucket != bucketcheck {
 		t.Log("default bucket had wrong values", defaultbucket)
 		t.Fail()
 	}
 	bucketcheck.Bucket = "subbucket"
 	bucketcheck.LastCall = subbucket.LastCall
+	bucketcheck.Drift = subbucket.Drift
 	if subbucket != bucketcheck {
 		t.Log("default bucket had wrong values", subbucket)
 		t.Fail()
