@@ -3,10 +3,7 @@ package egonest
 // This file contains useful constants and utility functions.
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 )
 
 // License options for artist/biographies, artist/images, etc.

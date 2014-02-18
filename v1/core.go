@@ -7,13 +7,14 @@ egonest is a wrapper for the Echo Nest API for the Go programming language.
 It provides a basic interface for making calls to the API, using Go's built-in json decoding
 to make it simpler to deal with responses.
 
-
+For full API documentation and to sign up, see http://developer.echonest.com
 
 */
-
 package egonest
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -29,9 +30,16 @@ import (
 )
 
 type RateLimitInfo struct {
-	Bucket                 string
-	Limit, Used, Remaining int
-	LastCall               time.Time
+	// The Rate Limit bucket applied.
+	Bucket string
+	// The static limit for this bucket.
+	Limit int
+	// The number of calls used up in the current minute.
+	Used int
+	// The number of calls remaining in the current minute.
+	Remaining int
+	// The time the last call in this bucket was made.
+	LastCall time.Time
 }
 
 // A Host contains the most basic information necessary for communicating with The Echo Nest; the API hostname and key.
@@ -131,12 +139,10 @@ func (h *Host) GetCall(call string, args url.Values) (resp *http.Response, err e
 	req.Header.Add("User-Agent", userAgent)
 	h.delayIfNeeded(call)
 	resp, httperr := h.Client.Do(req)
-	debugLogger.Println(u.String())
 	if httperr != nil {
 		err = httperr
 		return
 	}
-	h.storeRateLimit(call, resp.Header)
 	if resp.StatusCode != http.StatusOK {
 		code := resp.StatusCode
 		err = ErrorStatus{Status: nil, HTTPError: &code}
@@ -260,6 +266,7 @@ func (h *Host) storeRateLimit(call string, headers http.Header) {
 	}
 	info := RateLimitInfo{Bucket: headers.Get("x-ratelimit-bucket"),
 		Used: int(u), Limit: int(l), Remaining: int(r), LastCall: lc}
+	debugLogger.Println("storing rate limit info for", call, "info")
 
 	h.rateLimitLock.Lock()
 	defer h.rateLimitLock.Unlock()
@@ -271,7 +278,7 @@ func (h *Host) storeRateLimit(call string, headers http.Header) {
 
 }
 
-// Returns a map of bucket name to last retrieved rate limit information since program start.
+// Returns the Host's view of your API key's current rate limit.
 func (h *Host) RateLimits() map[string]RateLimitInfo {
 	h.SetDefaults()
 	h.rateLimitLock.RLock()
@@ -285,7 +292,7 @@ func (h *Host) RateLimits() map[string]RateLimitInfo {
 }
 
 // Returns the rate limit bucket for call or "" if there is none.
-// If call has not been used since the instantiation of the Host struct then the result will be "".
+// If call has not been used since the instantiation of the Host struct then the result will be the empty string.
 func (h *Host) CallToBucket(call string) string {
 	h.SetDefaults()
 	h.rateLimitLock.RLock()
@@ -310,12 +317,12 @@ func (h *Host) delayIfNeeded(call string) {
 
 	// seconds that were left until the next rate limit reset at the time
 	// of the last call
-	secondsleft := time.Duration(60-limit.LastCall.Second()) * time.Second
+	secondsleft := time.Duration(60-limit.LastCall.Second())*time.Second - time.Duration(limit.LastCall.Nanosecond())
 
 	if time.Now().Sub(limit.LastCall) > secondsleft {
 		// sleep until top of the minute
-		sleept := time.Duration(60-time.Now().Second()) * time.Second
-		debugLogger.Println("sleeping for", sleept)
+		sleept := time.Duration(60-time.Now().Second())*time.Second - time.Duration(time.Now().Nanosecond())
+		debugLogger.Println("rate limit used up", call, "sleeping for", sleept)
 		time.Sleep(sleept)
 	}
 }
@@ -336,6 +343,7 @@ func convertToErr(r interface{}) (err error) {
 	return
 }
 
+// A Status struct is contained
 type Status struct {
 	Version string
 	Code    int

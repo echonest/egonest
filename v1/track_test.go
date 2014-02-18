@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"time"
 )
@@ -34,7 +35,7 @@ func Example() {
 				Id     string
 				Md5    string
 			}
-		}
+		} `json:"response"`
 	}
 
 	// CustomUnmarshal is intended to take a pointer to a struct, although it will also
@@ -49,7 +50,7 @@ func Example() {
 	}
 
 	// check for app-level error
-	err = re.Status.AsError()
+	err = re.Response.Status.AsError()
 	if err != nil {
 		log.Println(err)
 		return
@@ -58,9 +59,9 @@ func Example() {
 	var uploadstatus string
 	var m map[string]interface{}
 	args = make(url.Values)
-	args.Set("id", re.Track.Id)
+	args.Set("id", re.Response.Track.Id)
 	args.Set("bucket", "audio_summary")
-	for uploadstatus = re.Track.Status; uploadstatus == "pending"; {
+	for uploadstatus = re.Response.Track.Status; uploadstatus == "pending"; {
 		time.Sleep(2 * time.Second)
 		resp, err := h.GetCall("track/profile", args)
 		if err != nil {
@@ -84,6 +85,30 @@ func Example() {
 			return
 		}
 	}
+
+	analysis_url, ok := Dig(m, "response", "track", "audio_summary", "analysis_url").(string)
+	if !ok {
+		log.Println("analysis_url not found!")
+		log.Println(m)
+		return
+	}
+
+	resp, err = http.Get(analysis_url)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	var full_analysis Analysis
+	err = CustomUnmarshal(resp, &full_analysis)
+	if err != nil {
+		log.Println(analysis_url)
+		log.Println(err)
+		return
+	}
+
+	log.Println("track had", len(full_analysis.Segments), "segments")
+
 	fmt.Println(uploadstatus)
 	fmt.Println(Dig(m, "response", "track", "md5")) // Dig is a convenient function for pulling items out of a map[string]interface{} or []interface{}
 	// Output:

@@ -1,5 +1,9 @@
 package egonest
 
+import (
+	"io"
+)
+
 // The UploadFile interface allows callers to upload "files" that are not *os.Files, as well as allowing an *os.File.
 type UploadFile interface {
 	io.Reader

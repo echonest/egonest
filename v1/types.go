@@ -102,9 +102,6 @@ type Track struct {
 	Id                 string `json:"id"`
 }
 
-type TrackAnalysisResponse struct {
-}
-
 type Artist struct {
 	Id              string   `json:"id"`
 	Name            string   `json:"name"`
@@ -216,13 +213,13 @@ type Analysis struct {
 		End_of_fade_in            float64 `json:"end_of_fade_in"`
 		Start_of_fade_out         float64 `json:"start_of_fade_out"`
 		Codestring                string  `json:"codestring"`
-		Code_version              string  `json:"code_version"`
+		Code_version              float64 `json:"code_version"`
 		Echoprintstring           string  `json:"echoprintstring"`
-		Echoprint_version         string  `json:"echoprint_version"`
+		Echoprint_version         float64 `json:"echoprint_version"`
 		Synchstring               string  `json:"synchstring"`
-		Synch_version             string  `json:"synch_version"`
+		Synch_version             float64 `json:"synch_version"`
 		Rhythmstring              string  `json:"rhythmstring"`
-		Rhythm_version            string  `json:"rhythm_version"`
+		Rhythm_version            float64 `json:"rhythm_version"`
 		Loudness                  float64 `json:"loudness"`
 		Tempo                     float64 `json:"tempo"`
 		Tempo_confidence          float64 `json:"tempo_confidence"`
