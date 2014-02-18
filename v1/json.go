@@ -70,8 +70,7 @@ func Dig(subject interface{}, args ...interface{}) (result interface{}) {
 
 // CustomUnmarshal will unmarshal the JSON in resp's Body into dest. dest must be a pointer to a struct with
 // a single struct field named Response or tagged json:"response".
-// For best results, the Response field should be a struct with an embedded Status struct tagged json:"status".
-// See TrackUploadLocalFile for an example.
+// CustomUnmarshal will only return a non-nil error if resp's HTTP status code is not 200.
 func CustomUnmarshal(resp *http.Response, dest interface{}) (err error) {
 	defer resp.Body.Close()
 	j := json.NewDecoder(resp.Body)

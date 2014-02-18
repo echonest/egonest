@@ -3,11 +3,14 @@
 // license that can be found in the LICENSE file.
 
 /*
-Package egonest is a wrapper for the Echo Nest API for the Go programming language.
+egonest is a wrapper for the Echo Nest API for the Go programming language.
 It provides a basic interface for making calls to the API, using Go's built-in json decoding
 to make it simpler to deal with responses.
 
+
+
 */
+
 package egonest
 
 import (
@@ -41,7 +44,7 @@ type RateLimitInfo struct {
 
 // ApiKey, if left unset, will be set to the value of the environment variable ECHO_NEST_API_KEY on first use.
 
-// Client's fields may be changed if needed.
+// Client may be altered or replaced as needed to suit your environment's needs.
 
 // Throttle, if true, will use rate-limiting information from the Echo Nest API to delay requests that would otherwise cause an error due to exceeding the API key's rate limit.
 
@@ -98,7 +101,7 @@ func copyValues(in url.Values) (out url.Values) {
 }
 
 // GetCall will obtain the raw response for an Echo Nest API call made through the GET method.
-// The caller must call rawresponse.Body.Close() if err is not nil.
+// The caller must call resp.Body.Close() (directly or through GenericUnmarshal or CustomUnmarshal) if err is not nil.
 // Calling this function will make a single API request.
 
 func (h *Host) GetCall(call string, args url.Values) (resp *http.Response, err error) {
@@ -143,15 +146,9 @@ func (h *Host) GetCall(call string, args url.Values) (resp *http.Response, err e
 	return resp, err
 }
 
-// This interface allows callers to upload "files" that are not *os.Files, as well as allowing an *os.File.
-type UploadFile interface {
-	io.Reader
-	Name() string
-}
-
 // PostCall will obtain the raw response for an Echo Nest API call made through the POST method.
 
-// The caller must call rawresponse.Body.Close() if err is not nil. If the io.Readers supplied need to be closed, the caller is responsible for that too.
+// The caller must call resp.Body.Close() (directly or through GenericUnmarshal or CustomUnmarshal) if err is not nil. If the io.Readers supplied need to be closed, the caller is responsible for that too.
 
 // Calling this function will make a single API request.
 
@@ -321,4 +318,52 @@ func (h *Host) delayIfNeeded(call string) {
 		debugLogger.Println("sleeping for", sleept)
 		time.Sleep(sleept)
 	}
+}
+
+func convertToErr(r interface{}) (err error) {
+	switch e := r.(type) {
+	case error:
+		err = e
+	case string:
+		err = errors.New(e)
+	case fmt.Stringer:
+		err = fmt.Errorf("%s", e.String())
+	case fmt.GoStringer:
+		err = fmt.Errorf("%#v", e)
+	default:
+		err = fmt.Errorf("%v", e)
+	}
+	return
+}
+
+type Status struct {
+	Version string
+	Code    int
+	Message string
+}
+
+func (s *Status) AsError() error {
+	if s.Code != 0 {
+		return ErrorStatus{Status: s}
+	}
+	return nil
+}
+
+// ErrorStatus will be returned by function calls when the error is above the HTTP transport layer.
+// For example: rate-limited API calls, invalid arguments or API keys, HTTP 4xx or 5xx errors.
+// Errors reading or writing the response itself may be of type http.ProtocolError, any error type from the
+// net package, or any other error type that may be returned by the I/O processes used in forming your request.
+type ErrorStatus struct {
+	*Status
+	HTTPError *int
+}
+
+func (e ErrorStatus) Error() string {
+	if e.Status != nil {
+		return e.Message
+	}
+	if e.HTTPError != nil {
+		return fmt.Sprintf("%d %s", *(e.HTTPError), http.StatusText(*(e.HTTPError)))
+	}
+	return "Unknown error"
 }

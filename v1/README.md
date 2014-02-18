@@ -6,7 +6,7 @@ egonest is a [Go][1] wrapper for [The Echo Nest][2] API.
 
 Basic installation can be done with `go get`:
 
-    go get github.com/echonest/egonest
+    go get github.com/echonest/egonest/v1
 
 # Documentation
 
@@ -14,4 +14,4 @@ Library documentation is embedded in the source code, and can be accessed throug
 
    [1]: http://golang.org
    [2]: http://developer.echonest.com
-   [3]: http://godoc.org/github.com/echonest/egonest
+   [3]: http://godoc.org/github.com/echonest/egonest/v1

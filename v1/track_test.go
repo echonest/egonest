@@ -8,27 +8,41 @@ import (
 	"time"
 )
 
-func ExampleTrackUploadLocalFile() {
-	var h Host
+func Example() {
+	var h Host // instantiate the host. this will use the default hostname of 'developer.echonest.com'
+	// and the API key from the environment
 
 	args := make(url.Values)
 	args.Set("filetype", "wav")
-	file := ReaderWrapper{"noise.wav", bytes.NewReader(noise)}
-	resp, err := h.PostCall("track/upload", args, map[string]UploadFile{"track": file})
 
-	// check network error
+	file := ReaderWrapper{"noise.wav", bytes.NewReader(noise)}                          // noise is defined in a separate file
+	resp, err := h.PostCall("track/upload", args, map[string]UploadFile{"track": file}) // see documentation
+	// for track/upload: http://developer.echonest.com/docs/v4/track.html#upload
+
+	// check for network error. A non-200 HTTP response is not reflected here.
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	defer resp.Body.Close()
 
+	// This struct mirrors the parts of the resposne to track/upload we need.
 	var re struct {
-		TrackUploadResult `json:"response"`
+		Response struct {
+			Status `json:"status"`
+			Track  struct {
+				Status string
+				Id     string
+				Md5    string
+			}
+		}
 	}
 
-	// check for json error or HTTP error
+	// CustomUnmarshal is intended to take a pointer to a struct, although it will also
+	// accept a pointer to a map[string]interface{}.
+	// This will close the response's Body.
 	err = CustomUnmarshal(resp, &re)
+
+	// check for non-200 HTTP status
 	if err != nil {
 		log.Println(err)
 		return
@@ -45,6 +59,7 @@ func ExampleTrackUploadLocalFile() {
 	var m map[string]interface{}
 	args = make(url.Values)
 	args.Set("id", re.Track.Id)
+	args.Set("bucket", "audio_summary")
 	for uploadstatus = re.Track.Status; uploadstatus == "pending"; {
 		time.Sleep(2 * time.Second)
 		resp, err := h.GetCall("track/profile", args)
@@ -52,13 +67,17 @@ func ExampleTrackUploadLocalFile() {
 			log.Println(err)
 			return
 		}
-		defer resp.Body.Close()
+
+		// This will also close resp's Body.
 		m, err = GenericUnmarshal(resp, false)
 		if err != nil {
 			log.Println(err)
 			return
 		}
+
 		var ok bool
+
+		// results from Dig still need type assertions
 		uploadstatus, ok = Dig(m, "response", "track", "status").(string)
 		if !ok {
 			log.Printf("status string not found! %v", m)
@@ -66,17 +85,8 @@ func ExampleTrackUploadLocalFile() {
 		}
 	}
 	fmt.Println(uploadstatus)
-	fmt.Println(Dig(m, "response", "track", "md5"))
+	fmt.Println(Dig(m, "response", "track", "md5")) // Dig is a convenient function for pulling items out of a map[string]interface{} or []interface{}
 	// Output:
 	// complete
 	// 2738fcc4359d716b40965fb406612ba0
-}
-
-type TrackUploadResult struct {
-	Status `json:"status"`
-	Track  struct {
-		Status string
-		Id     string
-		Md5    string
-	}
 }

@@ -209,38 +209,6 @@ func SongTypeState(songtype string, state int) string {
 
 }
 
-type Status struct {
-	Version string
-	Code    int
-	Message string
-}
-
-func (s *Status) AsError() error {
-	if s.Code != 0 {
-		return ErrorStatus{Status: s}
-	}
-	return nil
-}
-
-// ErrorStatus will be returned by function calls when the error is above the HTTP transport layer.
-// For example: rate-limited API calls, invalid arguments or API keys, HTTP 4xx or 5xx errors.
-// Errors reading or writing the response itself may be of type http.ProtocolError, any error type from the
-// net package, or any other error type that may be returned by the I/O processes used in forming your request.
-type ErrorStatus struct {
-	*Status
-	HTTPError *int
-}
-
-func (e ErrorStatus) Error() string {
-	if e.Status != nil {
-		return e.Message
-	}
-	if e.HTTPError != nil {
-		return fmt.Sprintf("%d %s", *(e.HTTPError), http.StatusText(*(e.HTTPError)))
-	}
-	return "Unknown error"
-}
-
 // Known error codes
 const (
 	UnknownError  = -1
@@ -250,28 +218,3 @@ const (
 	MissingArgs   = 4
 	BadArgs       = 5
 )
-
-func convertToErr(r interface{}) (err error) {
-	switch e := r.(type) {
-	case error:
-		err = e
-	case string:
-		err = errors.New(e)
-	case fmt.Stringer:
-		err = fmt.Errorf("%s", e.String())
-	case fmt.GoStringer:
-		err = fmt.Errorf("%#v", e)
-	default:
-		err = fmt.Errorf("%v", e)
-	}
-	return
-}
-
-type ReaderWrapper struct {
-	FileName string
-	io.Reader
-}
-
-func (r ReaderWrapper) Name() string {
-	return r.FileName
-}
