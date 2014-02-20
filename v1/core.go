@@ -65,7 +65,7 @@ type Host struct {
 	Throttle                   bool
 	callToBucket               map[string]string
 	rateLimits                 map[string]RateLimitInfo
-	rateLimitLock              sync.RWMutex
+	rateLimitLock              *sync.RWMutex
 	set                        sync.Once
 }
 
@@ -98,6 +98,7 @@ func (h *Host) SetDefaults() {
 			h.ApiKey = defaultApiKey
 		}
 		h.rateLimits = make(map[string]RateLimitInfo)
+		h.rateLimitLock = new(sync.RWMutex)
 		h.callToBucket = make(map[string]string)
 	})
 }
