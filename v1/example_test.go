@@ -182,7 +182,7 @@ func Example_playlist() {
 		return
 	}
 	for i, song := range Dig(decoded, "response", "songs").([]interface{}) {
-		fmt.Printf("%d %-32.32s s\n", i, Dig(song, "artist_name"), Dig(song, "title"))
+		fmt.Printf("%d %-32.32s %s\n", i, Dig(song, "artist_name"), Dig(song, "title"))
 	}
 }
 
